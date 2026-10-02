@@ -13,7 +13,7 @@ opt-level = "z"
 
 [dependencies]
 eframe = "0.30"
-rfd = "0.11"
+rfd = "0.15"
 chrono = "0.4.39"
 flate2 = "1.0.35"
-
+base64 = "0.22"

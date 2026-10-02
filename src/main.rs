@@ -1,6 +1,6 @@
 use gbuf::cfg::Cfg;
 use gbuf::encoder::Encoder;
-use gbuf::encoder::GzBytes;
+use gbuf::encoder::*;
 use gbuf::gbuffer;
 use std::{env, fs};
 
@@ -13,7 +13,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let cfg = Cfg::from_vec(&args);
 
-    let encoder = GzBytes::new();
+    let encoder = StackedEncoder::from_str_spec(cfg.keys.get("-spec").unwrap()).unwrap();
 
     if cfg.has("-gbuf") {
         gbuffer::main(&cfg, Box::new(encoder))
