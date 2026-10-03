@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Display;
 
-
 #[derive(Debug)]
 pub enum LogMsg {
     Msg(String),

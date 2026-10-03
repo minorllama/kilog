@@ -255,8 +255,6 @@ impl<'a> Drop for Note<'a> {
     }
 }
 
-
-
 impl<'a> eframe::App for Note<'a> {
     fn save(&mut self, _storage: &mut dyn eframe::Storage) {
         eprintln!("[cannot_get_this_to_work] {}", self.log);

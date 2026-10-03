@@ -1,15 +1,31 @@
-use std::io::{Read, Write};
 use flate2::Compression;
-use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use std::io::{Read, Write};
 //use std::io::Cursor;
+use base64::{Engine as _, engine::general_purpose};
 use std::io::prelude::*;
-use base64::{engine::general_purpose, Engine as _};
-
 
 pub trait Encoder {
     fn encode(&self, data: &mut Vec<u8>);
     fn decode(&self, data: &mut Vec<u8>);
+}
+
+pub trait Encoder2 {
+    fn encode(&self, data: &Vec<u8>) -> Result<Vec<u8>, ()>;
+    fn decode(&self, data: &Vec<u8>) -> Result<Vec<u8>, ()>;
+    fn state() -> String {
+        "".to_owned()
+    }
+}
+
+pub struct Plain {
+    log: bool,
+}
+
+impl Encoder for Plain {
+    fn encode(&self, data: &mut Vec<u8>) {}
+    fn decode(&self, data: &mut Vec<u8>) {}
 }
 
 use std::fmt;
@@ -22,7 +38,9 @@ pub enum EncoderParseError {
 impl fmt::Display for EncoderParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EncoderParseError::UnknownEncoder(name) => write!(f, "Unknown encoder identifier: '{name}'"),
+            EncoderParseError::UnknownEncoder(name) => {
+                write!(f, "Unknown encoder identifier: '{name}'")
+            }
         }
     }
 }
@@ -30,12 +48,12 @@ impl fmt::Display for EncoderParseError {
 impl std::error::Error for EncoderParseError {}
 
 pub struct GzBytes {
-    log:bool
+    log: bool,
 }
 
 impl GzBytes {
     pub fn new() -> GzBytes {
-        GzBytes {log:true}
+        GzBytes { log: true }
     }
 
     // https://github.com/rust-lang/flate2-rs
@@ -117,7 +135,6 @@ pub struct StackedEncoder {
     encoders: Vec<Box<dyn Encoder>>,
 }
 
-
 impl StackedEncoder {
     pub fn new(encoders: Vec<Box<dyn Encoder>>) -> Self {
         StackedEncoder { encoders }
@@ -139,7 +156,9 @@ impl StackedEncoder {
                     _ => return Err(EncoderParseError::UnknownEncoder(tag.to_string())),
                 }
             }
-
+        }
+        if builder.encoders.len() == 0 {
+            builder.encoders.push(Box::new(Plain { log: true }));
         }
         Ok(builder)
     }

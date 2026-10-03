@@ -11,7 +11,6 @@ use std::process::Command;
 
 use std::process::ExitStatus;
 
-
 extern crate chrono;
 use chrono::Local;
 
@@ -96,5 +95,3 @@ pub fn from_file<S: AsRef<std::path::Path>>(filename: S) -> io::Result<Vec<u8>> 
     let data = fs::read(filename)?;
     Ok(data)
 }
-
-
