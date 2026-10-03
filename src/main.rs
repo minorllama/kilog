@@ -26,9 +26,7 @@ fn main() {
         }
     } else {
         println!("compiled:{}", CTIME);
-        let usage = "
-            $ gbuf -gbuf:afile
-            $ gunzip -c afile # the saved file is gzipped";
+        let usage = "  $ kilog -gbuf:afile";
         if cfg.has("-h") {
             println!("{}", usage);
         }
