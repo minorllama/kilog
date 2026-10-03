@@ -1,6 +1,6 @@
 # KiloG
 
-A barebones GUI texteditor that's just a `egui` wrapper. Initially started a GUI version of (kilo)[https://github.com/antirez/kilo], (kilo-rs)[https://github.com/arminha/kilo-rs].
+A barebones GUI texteditor that's just a `egui` wrapper. Initially started a GUI version of [kilo](https://github.com/antirez/kilo), [kilo-rs]([https://github.com/arminha/kilo-rs).
 Now intended to be hackable.
 Build with: 
 ```bash
@@ -10,4 +10,4 @@ Build with:
             $ gunzip -c afile # the saved file is gzipped
 ```
 
-It writes files after gzipping, and gunzips before read, all easy to hack. The `-spec` option is how the file io is (encoded)[https://github.com/minorllama/kilog/blob/main/src/encoder.rs].
+It writes files after gzipping, and gunzips before read, all easy to hack. The `-spec` option is how the file io is [encoded](https://github.com/minorllama/kilog/blob/main/src/encoder.rs).
