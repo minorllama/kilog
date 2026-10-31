@@ -24,8 +24,8 @@ pub struct Plain {
 }
 
 impl Encoder for Plain {
-    fn encode(&self, data: &mut Vec<u8>) {}
-    fn decode(&self, data: &mut Vec<u8>) {}
+    fn encode(&self, _data: &mut Vec<u8>) {}
+    fn decode(&self, _data: &mut Vec<u8>) {}
 }
 
 use std::fmt;
