@@ -14,7 +14,7 @@ use std::{env, fs};
 
 const CTIME: &'static str = match option_env!("CTIME") {
     Some(value) => value,
-    None => "...",
+    None => "[unknown]",
 };
 
 fn main() {
@@ -51,8 +51,7 @@ fn main() {
     } else {
         println!("compiled:{}", CTIME);
         let usage = "
-            $ gbuf -gbuf:afile
-            $ gunzip -c afile # the saved file is gzipped";
+            ./target/debug/kilog -gbuf:1.z -spec:z #[encoded file is gzipped]";
         if cfg.has("-h") {
             println!("{}", usage);
         }
