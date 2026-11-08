@@ -2,9 +2,7 @@ use flate2::Compression;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use std::io::{Read, Write};
-//use std::io::Cursor;
 use base64::{Engine as _, engine::general_purpose};
-use std::io::prelude::*;
 
 
 pub trait Encoder {

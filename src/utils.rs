@@ -6,15 +6,12 @@ use std::fs::OpenOptions;
 use std::io;
 use std::io::Write;
 use std::io::{BufReader, prelude::*};
-use std::path::Path;
 use std::process::Command;
 
 use std::process::ExitStatus;
 
 extern crate chrono;
 use chrono::Local;
-
-//type StrRef = dyn AsRef<OsStr>;
 
 pub fn timetag() -> String {
     let now = Local::now();
@@ -72,13 +69,6 @@ pub fn stdin_line(line: &mut String) -> Result<usize, std::io::Error> {
     io::stdin().read_line(line)
 }
 
-/*pub fn fwrite_addbytes<T: AsRef<Path>>(f: &T, data: &Vec<u8>) {
-    let mut file = OpenOptions::new().write(true).append(true).open(f).unwrap();
-    if let Err(_e) = file.write_all(data) {
-        eprintln!("__cannot_add_to_file__:{:?}", file.metadata());
-        return;
-    }
-}*/
 
 pub fn to_file<S: AsRef<std::path::Path>>(filename: S, data: &Vec<u8>) -> io::Result<usize> {
     let mut file = OpenOptions::new()

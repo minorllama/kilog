@@ -26,7 +26,6 @@ pub fn save_file_dialog(_ctx: &egui::Context) -> Option<PathBuf> {
 
 pub fn extended_ui(note:&mut Note, ui: &mut egui::Ui, ctx: &egui::Context) {
     if !MINIMAL_UI {
-        //let sp_button = egui::Button::new("sp").min_size((&[40.0, 1.0]).into());
         let open_button = egui::Button::new("open").min_size((&[40.0, 1.0]).into());
         if ui.add(open_button).clicked() {
             if let Some(path) = open_file_dialog(ctx) {
@@ -48,13 +47,8 @@ impl<'a> eframe::App for Note<'a> {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        //let mut style = ctx.style().clone();
-        //access and modify the "Body" text style
-        //style.text_styles.insert(TextStyle::Body, FontId::new(18.0, egui::FontFamily::Proportional));
         let font = FontId::new(self.cfg.fontsize, FontFamily::Monospace);
-        //pub const fn from_rgb(r: u8, g: u8, b: u8).
         let color = Color32::from_rgb(28, 28, 28);
-        //ctx.set_style(style);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("");
             egui::ScrollArea::vertical()
@@ -65,7 +59,7 @@ impl<'a> eframe::App for Note<'a> {
                 .show(ui, |ui| {
                     ui.add(
                         egui::TextEdit::multiline(self.buffer)
-                            .font(font.clone()) //TextStyle::Monospace)
+                            .font(font.clone()) 
                             .background_color(color.clone())
                             .lock_focus(true)
                             .text_color(egui::Color32::GRAY)
@@ -76,7 +70,7 @@ impl<'a> eframe::App for Note<'a> {
                     ui.separator();
                     ui.add(
                         egui::TextEdit::multiline(&mut self.log)
-                            .font(font) //TextStyle::Monospace)
+                            .font(font) 
                             .background_color(color.clone())
                             .lock_focus(false)
                             .text_color(egui::Color32::GRAY)
@@ -109,17 +103,10 @@ impl<'a> eframe::App for Note<'a> {
                             },
                             egui::Key::S,
                         ) {
-                            // handle "ctrl-shift-s";
                             if self.filepath.is_some() {
                                 let filename = self.filepath.as_ref().expect("..");
                                 let filename = filename.to_str().unwrap();
                                 let status = &mut "".to_owned();
-                                /*self.backing(
-                                    filename,
-                                    status,
-                                    BackUpType::BeforeWrite,
-                                    &utils::timetag(),
-                                );*/
                                 BackUpType::BeforeWrite.backing(
                                     filename,
                                     status,
