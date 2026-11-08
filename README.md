@@ -4,9 +4,9 @@ A barebones GUI texteditor that's just a `egui` wrapper. Initially started a GUI
 Now intended to be hackable.
 Build with: 
 ```bash
- CTIME="$(date '+%m-%d-%y-%H.%M.%S')" cargo +stable build
+ CTIME="$(date '+%m-%d-%y-%H.%M.%S')" cargo build
 ./target/debug/kilog -h
-            $ kilog -gbuf:afile 
+            $ ./target/debug/kilog -gbuf:1.z -spec:z
 ```
 
 

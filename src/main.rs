@@ -1,7 +1,15 @@
 use kilog::cfg::Cfg;
 use kilog::encoder::Encoder;
-use kilog::encoder::*;
+
+#[cfg(feature = "encoder_ext")]
+use kilog::encoder_ext::StackedEncoder2;
+
+#[cfg(not(feature = "encoder_ext"))]
+use kilog::encoder::StackedEncoder as StackedEncoder2;
+
 use kilog::gbuffer;
+use kilog::utils;
+
 use std::{env, fs};
 
 const CTIME: &'static str = match option_env!("CTIME") {
@@ -12,21 +20,39 @@ const CTIME: &'static str = match option_env!("CTIME") {
 fn main() {
     let args: Vec<String> = env::args().collect();
     let cfg = Cfg::from_vec(&args);
-
-    let encoder = StackedEncoder::from_str_spec(cfg.keys.get("-spec").unwrap_or(&"".to_string())).unwrap();
+   
 
     if cfg.has("-gbuf") {
+        let encoder = StackedEncoder2::from_str_spec(cfg.keys.get("-spec").unwrap_or(&"".to_string())).unwrap();
         gbuffer::main(&cfg, Box::new(encoder))
     } else if cfg.has("-pipe") {
-        for f in &cfg.values[1..] {
-            let mut data: Vec<u8> = fs::read(f).unwrap();
-            encoder.decode(&mut data);
+        let decoder = StackedEncoder2::from_str_spec(cfg.keys.get("-r").unwrap_or(&"".to_string())).unwrap();
+        let encoder = StackedEncoder2::from_str_spec(cfg.keys.get("-w").unwrap_or(&"".to_string())).unwrap();
+        let infile = cfg.keys.get("-pipe").unwrap();
+        let data = {
+            let mut buffer: Vec<u8> = fs::read(infile).unwrap();
+            decoder.decode(&mut buffer);
+            encoder.encode(&mut buffer);
+            buffer
+        };
+        if let Some(outfile) = cfg.keys.get("-out") {
+            let write_status = utils::to_file(outfile, &data);
+            if !write_status.is_ok() {
+                eprintln!("[write_failed:{}]", outfile);
+            }
+        } else {
             let text = String::from_utf8(data).unwrap();
             println!("{}", text);
         }
+    } else if cfg.has("-bytes") {
+        for e in &cfg.values {
+            println!("{:?} {:?}", e, e.as_bytes().to_vec())
+        }
     } else {
         println!("compiled:{}", CTIME);
-        let usage = "  $ kilog -gbuf:afile";
+        let usage = "
+            $ gbuf -gbuf:afile
+            $ gunzip -c afile # the saved file is gzipped";
         if cfg.has("-h") {
             println!("{}", usage);
         }

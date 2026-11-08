@@ -6,6 +6,7 @@ use std::io::{Read, Write};
 use base64::{Engine as _, engine::general_purpose};
 use std::io::prelude::*;
 
+
 pub trait Encoder {
     fn encode(&self, data: &mut Vec<u8>);
     fn decode(&self, data: &mut Vec<u8>);
@@ -20,12 +21,12 @@ pub trait Encoder2 {
 }
 
 pub struct Plain {
-    log: bool,
+    pub log: bool,
 }
 
 impl Encoder for Plain {
-    fn encode(&self, data: &mut Vec<u8>) {}
-    fn decode(&self, data: &mut Vec<u8>) {}
+    fn encode(&self, _data: &mut Vec<u8>) {}
+    fn decode(&self, _data: &mut Vec<u8>) {}
 }
 
 use std::fmt;
@@ -149,11 +150,13 @@ impl StackedEncoder {
                 match tag.as_str() {
                     "z" => {
                         builder.encoders.push(Box::new(GzBytes::new()));
-                    }
+                    },
                     "b64" => {
                         builder.encoders.push(Box::new(Base64Encoder::new()));
-                    }
-                    _ => return Err(EncoderParseError::UnknownEncoder(tag.to_string())),
+                    },
+                    _ => { 
+                        return Err(EncoderParseError::UnknownEncoder(tag.to_string()))
+                    },
                 }
             }
         }

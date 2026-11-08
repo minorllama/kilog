@@ -72,13 +72,13 @@ pub fn stdin_line(line: &mut String) -> Result<usize, std::io::Error> {
     io::stdin().read_line(line)
 }
 
-pub fn fwrite_addbytes<T: AsRef<Path>>(f: &T, data: &Vec<u8>) {
+/*pub fn fwrite_addbytes<T: AsRef<Path>>(f: &T, data: &Vec<u8>) {
     let mut file = OpenOptions::new().write(true).append(true).open(f).unwrap();
     if let Err(_e) = file.write_all(data) {
         eprintln!("__cannot_add_to_file__:{:?}", file.metadata());
         return;
     }
-}
+}*/
 
 pub fn to_file<S: AsRef<std::path::Path>>(filename: S, data: &Vec<u8>) -> io::Result<usize> {
     let mut file = OpenOptions::new()
@@ -88,6 +88,7 @@ pub fn to_file<S: AsRef<std::path::Path>>(filename: S, data: &Vec<u8>) -> io::Re
         .open(filename)?;
     file.set_len(data.len() as u64)?;
     file.write_all(&data[..])?;
+    file.sync_all()?;
     Ok(data.len())
 }
 
