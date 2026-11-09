@@ -224,3 +224,57 @@ impl<'a> Drop for Note<'a> {
         self.signal.replace(true);
     }
 }
+
+
+pub mod note_events {
+
+    use crate::utils;
+    use super::{Note, BackUpType};
+    use std::path::PathBuf;
+
+
+    pub fn savefile<F>(note: &mut Note, get_filename: F)
+        where F: FnOnce() -> Option<PathBuf> {
+        if !note.filepath.is_some() {
+            if let Some(newname) = get_filename(){
+                note.filepath = Some(newname);
+            }
+        }
+        if !note.filepath.is_some(){
+            note.log_string("[save_cancelled]");
+        } else {
+            let status = note.savefile();
+            note.log_string(&status);
+        }
+    }
+
+    pub fn save_optional_backup_file<F>(note:&mut  Note, get_filename: F)
+        where F: FnOnce() -> Option<PathBuf> {
+        if !note.filepath.is_some(){
+            if let Some(newname) = get_filename(){
+                note.filepath = Some(newname);
+            }
+        }
+        if !note.filepath.is_some(){
+            note.log_string("[save_cancelled]");
+        } else {
+            let filename = note.filepath.as_ref().expect("..");
+            let filename = filename.to_str().unwrap();
+            let status = &mut "".to_owned();
+            BackUpType::BeforeWrite.backing(
+                filename,
+                status,
+                note,
+                &utils::timetag(),
+            );
+            note.log_string(&status);
+            let status = note.savefile();
+            note.log_string(&status)
+
+        }
+    }
+    pub fn clear_log(note:&mut  Note){
+        note.log_string("");
+    }
+
+}

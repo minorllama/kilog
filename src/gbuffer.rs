@@ -1,6 +1,5 @@
 use crate::cfg::Cfg;
 use crate::encoder::Encoder;
-use crate::utils;
 
 use eframe::egui::{self, Modifiers};
 use egui::{Color32, FontFamily, FontId}; // Style
@@ -10,7 +9,7 @@ use std::path::PathBuf;
 
 use rfd;
 
-use crate::note::{Note, BackUpType};
+use crate::note::{Note, note_events};
 
 
 const MINIMAL_UI: bool = true;
@@ -22,7 +21,6 @@ pub fn open_file_dialog(_ctx: &egui::Context) -> Option<PathBuf> {
 pub fn save_file_dialog(_ctx: &egui::Context) -> Option<PathBuf> {
     rfd::FileDialog::new().save_file()
 }
-
 
 pub fn extended_ui(note:&mut Note, ui: &mut egui::Ui, ctx: &egui::Context) {
     if !MINIMAL_UI {
@@ -59,7 +57,7 @@ impl<'a> eframe::App for Note<'a> {
                 .show(ui, |ui| {
                     ui.add(
                         egui::TextEdit::multiline(self.buffer)
-                            .font(font.clone()) 
+                            .font(font.clone()) //TextStyle::Monospace)
                             .background_color(color.clone())
                             .lock_focus(true)
                             .text_color(egui::Color32::GRAY)
@@ -70,7 +68,7 @@ impl<'a> eframe::App for Note<'a> {
                     ui.separator();
                     ui.add(
                         egui::TextEdit::multiline(&mut self.log)
-                            .font(font) 
+                            .font(font) //TextStyle::Monospace)
                             .background_color(color.clone())
                             .lock_focus(false)
                             .text_color(egui::Color32::GRAY)
@@ -93,60 +91,41 @@ impl<'a> eframe::App for Note<'a> {
                     }
                     ui.label(format!(""));
                     let _input = &ctx.input_mut(|e| {
-                        if e.consume_key(
-                            Modifiers {
-                                ctrl: true,
-                                alt: false,
-                                mac_cmd: false,
-                                shift: true,
-                                command: false,
-                            },
-                            egui::Key::S,
-                        ) {
-                            if self.filepath.is_some() {
-                                let filename = self.filepath.as_ref().expect("..");
-                                let filename = filename.to_str().unwrap();
-                                let status = &mut "".to_owned();
-                                BackUpType::BeforeWrite.backing(
-                                    filename,
-                                    status,
-                                    self,
-                                    &utils::timetag(),
-                                );
-                                self.log_string(&status);
-                                let status = self.savefile();
-                                self.log_string(&status)
-                            } else {
-                                self.log_string(
-                                    &save_file_dialog(ctx)
-                                        .expect("...")
-                                        .to_str()
-                                        .expect("..."),
-                                )
-                            };
-                        };
-                        if e.consume_key(
-                            Modifiers {
-                                ctrl: true,
-                                alt: false,
-                                mac_cmd: false,
-                                shift: false,
-                                command: false,
-                            },
-                            egui::Key::S,
-                        ) {
-                            if self.filepath.is_some() {
-                                let status = self.savefile();
-                                self.log_string(&status);
-                            } else {
-                                save_file_dialog(ctx);
-                            }
-                        };
+                        let keypress_crtl = Modifiers { ctrl: true,
+                                    alt: false,
+                                    mac_cmd: false,
+                                    shift: false,
+                                    command: false,
+                                };
+                        let keypress_shift_crtl = Modifiers { ctrl: true,
+                                    alt: false,
+                                    mac_cmd: false,
+                                    shift: true,
+                                    command: false,
+                                };
+
+                        if e.consume_key(keypress_shift_crtl, egui::Key::S){
+                            note_events::save_optional_backup_file(self, ||save_file_dialog(ctx));
+                        } 
+                        if e.consume_key(keypress_crtl, egui::Key::S){
+                            note_events::savefile(self, ||save_file_dialog(ctx));
+                        } 
+                        if e.consume_key(keypress_crtl, egui::Key::E){
+                            note_events::clear_log(self);
+                        }
+
+                        
+
                     });
                 });
         });
     }
+
 }
+
+
+
+
 
 pub fn ui(_f: Option<&String>, e: Note) {
     
