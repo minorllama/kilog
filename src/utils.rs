@@ -1,5 +1,6 @@
 use std::convert::AsRef;
 use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -7,11 +8,15 @@ use std::io;
 use std::io::Write;
 use std::io::{BufReader, prelude::*};
 use std::process::Command;
-
+use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
+
+
 
 extern crate chrono;
 use chrono::Local;
+
+use rand::{distr::Alphanumeric, RngExt};
 
 pub fn timetag() -> String {
     let now = Local::now();
@@ -81,6 +86,81 @@ pub fn to_file<S: AsRef<std::path::Path>>(filename: S, data: &Vec<u8>) -> io::Re
     file.sync_all()?;
     Ok(data.len())
 }
+
+
+
+// there are corner cases with utf8 in filenames, so isolate all that here
+fn path_with_suffix(path: &Path, suffix: &str) -> PathBuf {
+    [path.as_os_str(), OsStr::new(suffix)]
+        .into_iter()
+        .collect::<OsString>()
+        .into()
+}
+
+
+pub fn get_tempfile_with_prefix(prefix: &Path) -> io::Result<(File, PathBuf)> {
+    const MAX_ATTEMPTS: usize = 1000;
+
+    for attempt in 0..MAX_ATTEMPTS {
+        let random_tag: String = rand::rng()
+            .sample_iter(Alphanumeric)
+            .take(8)
+            .map(char::from)
+            .collect();
+
+        let proc_id = std::process::id();
+        let temp = path_with_suffix(prefix, &format!(".{random_tag}-{attempt}-{proc_id}"));
+
+
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp)
+        {
+            Ok(file) => return Ok((file, temp)),
+            Err(err) if err.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(err) => return Err(err),
+        }
+    }
+
+    Err(io::Error::new(io::ErrorKind::AlreadyExists, "[could not create a temp file]"))
+}
+
+pub fn to_file_atomic(filename: impl AsRef<Path>, data: &[u8]) -> io::Result<usize> {
+    fn write_then_move(
+        mut file: File,
+        data: &[u8],
+        temp: &Path,
+        destination: &Path,
+    ) -> io::Result<usize> {
+        file.write_all(data)?;
+        file.sync_all()?;
+        drop(file);
+        fs::rename(temp, destination)?;
+        Ok(data.len())
+    }
+
+    let destination = filename.as_ref();
+
+    let prefix = path_with_suffix(destination, ".tmp");
+
+    let (file, temp) = get_tempfile_with_prefix(&prefix)?;
+    let result = write_then_move(file, data, &temp, destination);
+
+    let status = if result.is_ok() { "ok" } else { "failed" };
+
+    eprintln!(
+        "[atomic_write_{status}: {result:?} | temp: {}, dest: {}]",
+        temp.display(),
+        destination.display(),
+    );
+
+    result
+}
+
+
+
+
 
 pub fn from_file<S: AsRef<std::path::Path>>(filename: S) -> io::Result<Vec<u8>> {
     let data = fs::read(filename)?;

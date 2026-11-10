@@ -51,7 +51,7 @@ fn main() {
     } else {
         println!("compiled:{}", CTIME);
         let usage = "
-            ./target/debug/kilog -gbuf:1.z -spec:z 
+            ./target/release/kilog -gbuf:1.z -spec:z 
             
             # file opened is gzipped as specified by -spec and all changes are saved gzipped, see src/encoder.rs";
         if cfg.has("-h") {

@@ -17,6 +17,7 @@ rfd = "0.15"
 chrono = "0.4.39"
 flate2 = "1.0.35"
 base64 = "0.22"
+rand = "0.10.3"
 
 [features]
 default = []

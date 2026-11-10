@@ -136,7 +136,7 @@ impl<'a> Note<'a> {
             let filename = filepath.to_str();
             let now = &utils::timetag();
             let filename2 = filename.unwrap();
-            let mut m = if let Err(e) = utils::to_file(filename2, &data) {
+            let mut m = if let Err(e) = utils::to_file_atomic(filename2, &data) {
                 format!("{now} failed @ save[{filename2}] with:{e}")
             } else {
                 let mut hasher = DefaultHasher::new();
@@ -181,7 +181,7 @@ impl<'a> Note<'a> {
             } else {
                 dropfile
             };
-            let write_status = utils::to_file(&backfile, &data);
+            let write_status = utils::to_file_atomic(&backfile, &data);
             eprintln!("{:?}:{}", &write_status,&backfile);
             if !write_status.is_ok(){
                 eprintln!("[!!!!write_failed:{}]", &backfile);
