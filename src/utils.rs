@@ -136,6 +136,15 @@ pub fn to_file_atomic(filename: impl AsRef<Path>, data: &[u8]) -> io::Result<usi
         file.write_all(data)?;
         file.sync_all()?;
         drop(file);
+        match fs::metadata(destination) {
+            Ok(metadata) if metadata.permissions().readonly() => {
+                return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied, "[destination file is read-only]"));
+            }
+            Ok(_) => {}
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+            Err(err) => return Err(err)    
+        }
         fs::rename(temp, destination)?;
         Ok(data.len())
     }
