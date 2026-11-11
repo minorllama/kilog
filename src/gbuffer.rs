@@ -35,6 +35,7 @@ pub fn extended_ui(note:&mut Note, ui: &mut egui::Ui, ctx: &egui::Context) {
     }
 }
 
+use std::sync::atomic::{AtomicBool, Ordering};
 impl<'a> eframe::App for Note<'a> {
     fn save(&mut self, _storage: &mut dyn eframe::Storage) {
         eprintln!("[cannot_get_this_to_work] {}", self.log);
@@ -47,9 +48,11 @@ impl<'a> eframe::App for Note<'a> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let font = FontId::new(self.cfg.fontsize, FontFamily::Monospace);
         let color = Color32::from_rgb(28, 28, 28);
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default()
+            .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(egui::Margin::same(6 as f32)))
+            .show(ctx, |ui| {
             ui.heading("");
-            egui::ScrollArea::vertical()
+            let output = egui::ScrollArea::vertical()
                 .id_salt("serial_output")
                 .auto_shrink([true; 2])
                 .stick_to_bottom(true)
@@ -118,17 +121,20 @@ impl<'a> eframe::App for Note<'a> {
 
                     });
                 });
+                // resize frame for the textboxes
+                static FITTED: AtomicBool = AtomicBool::new(false);
+                if !FITTED.swap(true, Ordering::Relaxed) {
+                    let width = ctx.screen_rect().width();
+                    let height = (output.content_size.y + 4 as f32 * self.cfg.fontsize).ceil();
+                    ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(width, height)));
+                }
         });
+
     }
 
 }
 
-
-
-
-
 pub fn ui(_f: Option<&String>, e: Note) {
-    
     fn with_context<'a >(_cc: &eframe::CreationContext<'_>, e: Note<'a>) -> Note<'a> {
         e
     }
