@@ -111,16 +111,16 @@ pub fn get_tempfile_with_prefix(prefix: &Path) -> io::Result<(File, PathBuf)> {
         let proc_id = std::process::id();
         let temp = path_with_suffix(prefix, &format!(".{random_tag}-{attempt}-{proc_id}"));
 
-
         match OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(&temp)
-        {
-            Ok(file) => return Ok((file, temp)),
-            Err(err) if err.kind() == io::ErrorKind::AlreadyExists => continue,
-            Err(err) => return Err(err),
+            .open(&temp) {
+                Ok(file) => return Ok((file, temp)),
+                Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {},
+                Err(err) => return Err(err)
         }
+
+
     }
 
     Err(io::Error::new(io::ErrorKind::AlreadyExists, "[could not create a temp file]"))
@@ -138,8 +138,9 @@ pub fn to_file_atomic(filename: impl AsRef<Path>, data: &[u8]) -> io::Result<usi
         drop(file);
         match fs::metadata(destination) {
             Ok(metadata) if metadata.permissions().readonly() => {
+                let log_str = format!("[{} is read-only|{} not moved]", destination.display(), temp.display()); 
                 return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied, "[destination file is read-only]"));
+                io::ErrorKind::PermissionDenied, log_str));
             }
             Ok(_) => {}
             Err(err) if err.kind() == io::ErrorKind::NotFound => {}
