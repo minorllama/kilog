@@ -6,9 +6,8 @@ Build with:
 ```bash
  CTIME="$(date '+%m-%d-%y-%H.%M.%S')" cargo build --release
 ./target/release/kilog -h
-            ./target/release/kilog -gbuf:1.z -spec:z 
-            
-            # file opened is gzipped as specified by -spec and all changes are saved gzipped, see src/encoder.rs
+            ./target/release/kilog -gbuf:1.z -spec:z             
 ```
 
+The compile time is saved in the binary. The `-spec:z` specifies input/output encoder for the file, see [encoder.rs](src/encoder.rs): `z` specifies that the file content is compressed. 
 
