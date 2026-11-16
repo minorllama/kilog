@@ -9,12 +9,12 @@ Build with:
             ./target/release/kilog -gbuf:1.z -spec:z             
 ```
 
-<<<<<<< HEAD
+The compile time is saved in the binary. The `-spec:z` specifies input/output encoder for the file, see [encoder.rs](src/encoder.rs): `z` specifies that the file content is compressed.
 A pdfviewer that uses the same encoding/decoding spec works through `-pdfview`, 
 ```
 	./target/release/kilog -pdfview:./zktorch.2507.07031v2.pdf
 ```
-=======
-The compile time is saved in the binary. The `-spec:z` specifies input/output encoder for the file, see [encoder.rs](src/encoder.rs): `z` specifies that the file content is compressed. 
->>>>>>> a642592b12e8c41ba2969eae48f479b7860bda41
+
+ 
+
 
