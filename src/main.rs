@@ -1,5 +1,9 @@
 use kilog::cfg::Cfg;
 use kilog::encoder::Encoder;
+use kilog::gbuffer;
+use kilog::utils;
+
+use std::{env, fs};
 
 #[cfg(feature = "encoder_ext")]
 use kilog::encoder_ext::StackedEncoder2;
@@ -7,11 +11,8 @@ use kilog::encoder_ext::StackedEncoder2;
 #[cfg(not(feature = "encoder_ext"))]
 use kilog::encoder::StackedEncoder as StackedEncoder2;
 
-use kilog::gbuffer;
+#[cfg(feature = "pdfview")]
 use kilog::pdfview;
-use kilog::utils;
-
-use std::{env, fs};
 
 const CTIME: &'static str = match option_env!("CTIME") {
     Some(value) => value,
@@ -49,22 +50,26 @@ fn main() {
         for e in &cfg.values {
             println!("{:?} {:?}", e, e.as_bytes().to_vec())
         }
-    } else if cfg.has("-pdfview") {
-        let encoder = StackedEncoder2::from_str_spec(cfg.keys.get("-spec").unwrap_or(&"".to_string())).unwrap();
-        let f = cfg.keys.get("-pdfview").unwrap();
-        let fread = utils::from_file(f);
-        if !fread.is_ok() {
-            eprintln!("[? {:?}]", &fread);
-        } else {
-            let data_read:Option<Vec<u8>> = fread.ok();
-            if let Some(mut data) = data_read  {
-                encoder.decode(&mut data);
-                let _ = pdfview::pdfview(data);
-            } else {
-                eprintln!("[? {:?}]", f);
-            }
-        }
     } else {
+        #[cfg(feature = "pdfview")]
+        if cfg.has("-pdfview") {
+            let encoder = StackedEncoder2::from_str_spec(cfg.keys.get("-spec").unwrap_or(&"".to_string())).unwrap();
+            let f = cfg.keys.get("-pdfview").unwrap();
+            let fread = utils::from_file(f);
+            if !fread.is_ok() {
+                eprintln!("[? {:?}]", &fread);
+            } else {
+                let data_read:Option<Vec<u8>> = fread.ok();
+                if let Some(mut data) = data_read  {
+                    encoder.decode(&mut data);
+                    let _ = pdfview::pdfview(data);
+                } else {
+                    eprintln!("[? {:?}]", f);
+                }
+            }
+            return;
+        }
+
         println!("compiled:{}", CTIME);
         let usage = " ./target/release/kilog -gbuf:1.z -spec:z ";
         if cfg.has("-h") {

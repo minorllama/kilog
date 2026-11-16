@@ -10,7 +10,8 @@ Build with:
 ```
 
 The compile time is saved in the binary. The `-spec:z` specifies input/output encoder for the file, see [encoder.rs](src/encoder.rs): `z` specifies that the file content is compressed.
-A pdfviewer that uses the same encoding/decoding spec works through `-pdfview`, 
+
+A pdfviewer that uses the same encoding/decoding spec works through `-pdfview` on building `--features=pdfview`, 
 ```
 	./target/release/kilog -pdfview:./zktorch.2507.07031v2.pdf
 ```

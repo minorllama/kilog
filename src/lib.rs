@@ -3,6 +3,8 @@ pub mod encoder;
 pub mod note;
 pub mod gbuffer;
 pub mod utils;
+
+#[cfg(feature = "pdfview")]
 pub mod pdfview;
 
 #[cfg(feature = "encoder_ext")]
