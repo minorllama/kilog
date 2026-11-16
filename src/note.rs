@@ -7,6 +7,9 @@ use std::collections::VecDeque;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
+
+use std::io::{self, BufReader, Read};
+
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -112,7 +115,20 @@ impl<'a> Note<'a> {
         if note.filepath.is_some() {
             let log = note.loadfile();
             note.log_string(&log);
-        }
+        } else if cfg.has("-stdin") {
+            let stdin = io::stdin();
+            let mut reader = BufReader::new(stdin);
+            let mut data = Vec::new();
+            let status = reader.read_to_end(&mut data);
+            let now = &utils::timetag();
+            if status.is_ok() {
+                note.coding.decode(&mut data);
+                note.buffer.push_str(&String::from_utf8(data).unwrap());
+                note.log_string(&format!("{now} read:[stdin]"));
+            } else {
+                note.log_string(&format!("{now} read_failed:[stdin]"));
+            }
+        };
         eprintln!("{:?}", note.cfg);
         note
     }
