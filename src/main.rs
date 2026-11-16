@@ -8,6 +8,7 @@ use kilog::encoder_ext::StackedEncoder2;
 use kilog::encoder::StackedEncoder as StackedEncoder2;
 
 use kilog::gbuffer;
+use kilog::pdfview;
 use kilog::utils;
 
 use std::{env, fs};
@@ -47,6 +48,21 @@ fn main() {
     } else if cfg.has("-bytes") {
         for e in &cfg.values {
             println!("{:?} {:?}", e, e.as_bytes().to_vec())
+        }
+    } if cfg.has("-pdfview") {
+        let encoder = StackedEncoder2::from_str_spec(cfg.keys.get("-spec").unwrap_or(&"".to_string())).unwrap();
+        let f = cfg.keys.get("-pdfview").unwrap();
+        let mut fread = utils::from_file(f);
+        if !fread.is_ok() {
+
+            eprintln!("[? {:?}]", &fread);
+        }
+        let mut data_read:Option<Vec<u8>> = fread.ok();
+        if let Some(mut data) = data_read  {
+            encoder.decode(&mut data);
+            pdfview::pdfview(data);
+        } else {
+            eprintln!("[? {:?}]", f);
         }
     } else {
         println!("compiled:{}", CTIME);

@@ -11,4 +11,8 @@ Build with:
             # file opened is gzipped as specified by -spec and all changes are saved gzipped, see src/encoder.rs
 ```
 
+A pdfviewer that uses the same encoding/decoding spec works through `-pdfview`, 
+```
+	./target/release/kilog -pdfview:./zktorch.2507.07031v2.pdf
+```
 
