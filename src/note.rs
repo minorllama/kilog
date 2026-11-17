@@ -155,7 +155,7 @@ impl<'a> Note<'a> {
                 let mut hasher = DefaultHasher::new();
                 self.buffer.hash(&mut hasher);
                 let hash_value = hasher.finish();
-                format!("{now} {hash_value} save[{filename2}]")
+                format!("{now} {hash_value:016x} save[{filename2}]")
             };
             BackUpType::AfterWrite.backing(filename2, &mut m, self, now);  
             m
