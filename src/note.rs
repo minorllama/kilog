@@ -116,12 +116,9 @@ impl<'a> Note<'a> {
             let log = note.loadfile();
             note.log_string(&log);
         } else if cfg.has("-stdin") {
-            let stdin = io::stdin();
-            let mut reader = BufReader::new(stdin);
             let mut data = Vec::new();
-            let status = reader.read_to_end(&mut data);
             let now = &utils::timetag();
-            if status.is_ok() {
+            if let Ok(_) = utils::from_stdin(&mut data) {
                 note.coding.decode(&mut data);
                 note.buffer.push_str(&String::from_utf8(data).unwrap());
                 note.log_string(&format!("{now} read:[stdin]"));

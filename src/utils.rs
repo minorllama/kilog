@@ -170,7 +170,11 @@ pub fn to_file_atomic(filename: impl AsRef<Path>, data: &[u8]) -> io::Result<usi
 
 
 
-
+pub fn from_stdin(data:&mut Vec<u8>) -> io::Result<usize> {
+    let stdin = io::stdin();
+    let mut reader = BufReader::new(stdin);
+    reader.read_to_end(data)
+}
 
 pub fn from_file<S: AsRef<std::path::Path>>(filename: S) -> io::Result<Vec<u8>> {
     let data = fs::read(filename)?;
