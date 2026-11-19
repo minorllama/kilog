@@ -90,7 +90,7 @@ pub fn to_file<S: AsRef<std::path::Path>>(filename: S, data: &Vec<u8>) -> io::Re
 
 
 // there are corner cases with utf8 in filenames, so isolate all that here
-fn path_with_suffix(path: &Path, suffix: &str) -> PathBuf {
+fn suffixed_path(path: &Path, suffix: &str) -> PathBuf {
     [path.as_os_str(), OsStr::new(suffix)]
         .into_iter()
         .collect::<OsString>()
@@ -109,7 +109,7 @@ pub fn get_tempfile_with_prefix(prefix: &Path) -> io::Result<(File, PathBuf)> {
             .collect();
 
         let proc_id = std::process::id();
-        let temp = path_with_suffix(prefix, &format!(".{random_tag}-{attempt}-{proc_id}"));
+        let temp = suffixed_path(prefix, &format!(".{random_tag}-{attempt}-{proc_id}"));
 
         match OpenOptions::new()
             .write(true)
@@ -126,45 +126,72 @@ pub fn get_tempfile_with_prefix(prefix: &Path) -> io::Result<(File, PathBuf)> {
     Err(io::Error::new(io::ErrorKind::AlreadyExists, "[could not create a temp file]"))
 }
 
-pub fn to_file_atomic(filename: impl AsRef<Path>, data: &[u8]) -> io::Result<usize> {
-    fn write_then_move(
-        mut file: File,
-        data: &[u8],
-        temp: &Path,
-        destination: &Path,
-    ) -> io::Result<usize> {
-        file.write_all(data)?;
-        file.sync_all()?;
-        drop(file);
-        match fs::metadata(destination) {
-            Ok(metadata) if metadata.permissions().readonly() => {
-                let log_str = format!("[{} is read-only|{} not moved]", destination.display(), temp.display()); 
-                return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied, log_str));
-            }
-            Ok(_) => {}
-            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
-            Err(err) => return Err(err)    
+
+
+
+fn move_or_overwrite_file(source:&Path, destination:&Path) -> io::Result<()> {
+    // may need to custmize this
+    match fs::metadata(destination) {
+        Ok(metadata) if metadata.permissions().readonly() => {
+            let log_str = format!("[{} is read-only|{} not moved]", destination.display(), source.display()); 
+            return Err(io::Error::new(io::ErrorKind::PermissionDenied, log_str));
         }
-        fs::rename(temp, destination)?;
-        Ok(data.len())
+        Ok(_) => {}
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+        Err(err) => return Err(err)    
     }
+    fs::rename(source, destination)
+}
 
+fn write_then_move(
+    target: (File, &Path),
+    data: &[u8],
+    destination: &Path,
+) -> io::Result<usize> {
+    let (mut file, filepath) = target;
+    file.write_all(data)?;
+    file.sync_all()?;
+    drop(file);
+    let n = data.len();
+    move_or_overwrite_file(filepath, destination).and_then(|_x|{Ok(n)})
+}
+
+fn write_then_move_checked(
+    target: (File, &Path),
+    data: &[u8],
+    destination: &Path,
+) -> io::Result<usize> {
+    let (mut file, filepath) = target;
+    file.write_all(data)?;
+    file.sync_all()?;
+    drop(file);
+    let copied_data = from_file(filepath)?; // may need map_err if error type changes
+    if !(data == copied_data){
+        return Err(io::Error::new(io::ErrorKind::Other, "[copied_data_could_not_be_verified]"));
+    }
+    let n = data.len();
+    move_or_overwrite_file(filepath, destination).and_then(|x|{Ok(n)})
+}
+
+pub fn to_file_atomic_checked(filename: impl AsRef<Path>, data: &[u8]) -> io::Result<usize> {
     let destination = filename.as_ref();
-
-    let prefix = path_with_suffix(destination, ".tmp");
-
+    let prefix = suffixed_path(destination, ".tmp");
     let (file, temp) = get_tempfile_with_prefix(&prefix)?;
-    let result = write_then_move(file, data, &temp, destination);
+    write_then_move_checked((file, &temp), data, destination)
+}
 
+
+pub fn to_file_atomic(filename: impl AsRef<Path>, data: &[u8]) -> io::Result<usize> {
+    let destination = filename.as_ref();
+    let prefix = suffixed_path(destination, ".tmp");
+    let (file, temp) = get_tempfile_with_prefix(&prefix)?;
+    let result = write_then_move((file, &temp), data, destination);
     let status = if result.is_ok() { "ok" } else { "failed" };
-
     eprintln!(
         "[atomic_write_{status}: {result:?} | temp: {}, dest: {}]",
         temp.display(),
         destination.display(),
     );
-
     result
 }
 
