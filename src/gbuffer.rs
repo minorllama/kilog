@@ -28,7 +28,7 @@ pub fn extended_ui(note:&mut Note, ui: &mut egui::Ui, ctx: &egui::Context) {
         if ui.add(open_button).clicked() {
             if let Some(path) = open_file_dialog(ctx) {
                 note.filepath = Some(path.clone());
-                let status = note.loadfile();
+                let status = note_events::loadfile(note);
                 note.log_string(&status);
             }
         }
@@ -37,14 +37,6 @@ pub fn extended_ui(note:&mut Note, ui: &mut egui::Ui, ctx: &egui::Context) {
 
 use std::sync::atomic::{AtomicBool, Ordering};
 impl<'a> eframe::App for Note<'a> {
-    /*fn save(&mut self, _storage: &mut dyn eframe::Storage) {
-        eprintln!("[cannot_get_this_to_work] {}", self.log);
-    }
-
-    fn auto_save_interval(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(1)
-    }*/
-
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let font = FontId::new(self.cfg.fontsize, FontFamily::Monospace);
         let color = Color32::from_rgb(28, 28, 28);
@@ -89,7 +81,7 @@ impl<'a> eframe::App for Note<'a> {
                         if !self.filepath.is_some() {
                             self.filepath = save_file_dialog(ctx);
                         }
-                        let status = self.savefile();
+                        let status = String::from(self.savefile());
                         self.log_string(&status);
                     }
                     ui.label(format!(""));
@@ -111,7 +103,7 @@ impl<'a> eframe::App for Note<'a> {
                             note_events::save_optional_backup_file(self, ||save_file_dialog(ctx));
                         } 
                         if e.consume_key(keypress_crtl, egui::Key::S){
-                            note_events::savefile(self, ||save_file_dialog(ctx));
+                            note_events::savefile(self, ||save_file_dialog(ctx), true);
                         } 
                         if e.consume_key(keypress_crtl, egui::Key::E){
                             note_events::clear_log(self);

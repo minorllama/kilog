@@ -4,10 +4,8 @@ use crate::utils;
 
 use std::cell::Cell;
 use std::collections::VecDeque;
-use std::fmt;
-use std::fmt::{Display, Formatter};
 
-
+use std::fmt::{self, Display, Formatter};
 use std::io::{self, BufReader, Read};
 
 use std::collections::hash_map::DefaultHasher;
@@ -16,50 +14,51 @@ use std::hash::{Hash, Hasher};
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug)]
-pub enum BackUpType {
-    OnOpen,
-    AfterWrite,
-    OnExit,
-    BeforeWrite,
-}
-impl Display for BackUpType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            BackUpType::OnOpen => write!(f, "open"),
-            BackUpType::BeforeWrite => write!(f, "bw"),
-            BackUpType::AfterWrite => write!(f, "aw"),
-            BackUpType::OnExit => write!(f, "exit"),
-        }
-    }
-}
+
 
 #[derive(Debug)]
-pub enum SaveOk {
+pub enum SaveFile {
     IgnoredEmpty,
     IgnoredUnchanged,
-    Saved(String),
+    Ok(String),
+    Err(String),
 }
 
-impl BackUpType {
-    pub fn backing(self, filename: &str, m: &mut String, note:&Note, now: &String) {
-        fn logbackup(tag: BackUpType, filename: &str, now: &String) -> String {
-            if let Ok(backed) = utils::backfile(filename, &format!("{}.{}", tag, now)) {
-                format!(":backed[{tag}]:{backed}")
-            } else {
-                format!(":failed_backing[{tag}]")
-            }
-        }
+
+impl SaveFile {
+    fn as_str<'a >(&'a self) -> &'a str {
         match self {
-            BackUpType::OnExit|BackUpType::OnOpen|BackUpType::BeforeWrite => {
-                if note.cfg.trace { m.push_str(&logbackup(self, filename, now)) } 
-            }
-            BackUpType::AfterWrite => {
-                if note.cfg.history { m.push_str(&logbackup(self, filename, now))} 
-            }
-        };
+            SaveFile::IgnoredEmpty => "[ignored_empty_buffer]",
+            SaveFile::IgnoredUnchanged => "[ignored_unchanged_buffer]",
+            SaveFile::Ok(log) => log,
+            SaveFile::Err(log) => log,
+        }
     }
 }
+
+impl From<&SaveFile> for String {
+    fn from(save_ok: &SaveFile) -> Self {
+        save_ok.as_str().to_owned()
+    }
+}
+
+
+impl From<SaveFile> for String {
+    fn from(save_ok: SaveFile) -> Self {
+        save_ok.as_str().to_owned()
+    }
+}
+
+
+
+impl Display for SaveFile {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", String::from(self))
+    }
+}
+
+
+
 
 
 #[derive(Debug)]
@@ -124,7 +123,7 @@ impl<'a> Note<'a> {
             },
         };
         if note.filepath.is_some() {
-            let log = note.loadfile();
+            let log = note_events::loadfile(&mut note);
             note.log_string(&log);
         } else if cfg.has("-stdin") {
             let mut data = Vec::new();
@@ -152,55 +151,41 @@ impl<'a> Note<'a> {
     }
 
 
-    pub fn savefile_checked(&mut self) -> SaveOk {
+    pub fn savefile_checked(&mut self) -> SaveFile {
         eprintln!("{:?}", self.is_buffer_dirty());
         if !self.is_buffer_dirty() {
-            SaveOk::IgnoredUnchanged 
+            SaveFile::IgnoredUnchanged 
         } else {
             self.buffer0.clone_from(self.buffer);
-            SaveOk::Saved(self.savefile())
+            self.savefile()
         }
     }
 
 
-    pub fn savefile(&self) -> String {
+    pub fn savefile(&self) -> SaveFile {
         let mut data = self.buffer.as_bytes().to_vec();
         if let Some(filepath) = self.filepath.as_ref() {
-            self.coding.encode(&mut data);
-            let filename = filepath.to_str();
-            let now = &utils::timetag();
-            let filename2 = filename.unwrap();
-            let mut m = if let Err(e) = utils::to_file_atomic(filename2, &data) {
-                format!("{now} failed @ save[{filename2}] with:{e}")
-            } else {
-                let mut hasher = DefaultHasher::new();
-                self.buffer.hash(&mut hasher);
-                let hash_value = hasher.finish();
-                format!("{now} {hash_value:016x} save[{filename2}]")
-            };
-            BackUpType::AfterWrite.backing(filename2, &mut m, self, now);  
-            m
-
-        } else {
-            "no_vald_filepath".to_owned()
-        }
-    }
-
-    pub fn loadfile(&mut self) -> String {
-        let path = self.filepath.as_ref().unwrap().to_str().unwrap();
-        match utils::from_file(path) {
-            Ok(mut data) => {
-                self.coding.decode(&mut data);
-                self.buffer.push_str(&String::from_utf8(data).unwrap());
-                self.buffer0.clone_from(self.buffer);
+            if let Some(filename2) = filepath.to_str() {
                 let now = &utils::timetag();
-                let mut m = format!("{now} opened:[{path}]");
-                BackUpType::OnOpen.backing(path, &mut m, self, now); 
-                m
+                self.coding.encode(&mut data);
+                let mut m = if let Err(e) = utils::to_file_atomic(filename2, &data) {
+                    format!("{now} failed @ save[{filename2}] with:{e}")
+                } else {
+                    let mut hasher = DefaultHasher::new();
+                    self.buffer.hash(&mut hasher);
+                    let hash_value = hasher.finish();
+                    format!("{now} {hash_value:016x} save[{filename2}]")
+                };
+                SaveFile::Ok(m)
+            } else {
+                SaveFile::Err(format!("malformed_filename:{:?}", filepath))
             }
-            Err(e) => e.to_string(),
+        } else {
+            SaveFile::Err("no_vald_filepath".to_owned())
         }
     }
+
+
 
 
 
@@ -237,12 +222,13 @@ impl<'a> Note<'a> {
 
 impl<'a> Drop for Note<'a> {
     fn drop(&mut self) {
-        eprintln!("#############");
+        let sepline = "#############";
+        eprintln!("{}", sepline);
         eprintln!("# {}", self.logbuffer.len());
         for e in &self.logbuffer {
             eprintln!("# {}", e);
         }
-        eprintln!("#############");
+        eprintln!("{}", sepline);
 
         if self.cfg.on_exit {
             let mut data: Vec<u8> = self
@@ -263,12 +249,33 @@ impl<'a> Drop for Note<'a> {
 
 pub mod note_events {
 
-    use crate::utils;
-    use super::{Note, BackUpType};
+    use std::fmt::{self, Display, Formatter};
     use std::path::PathBuf;
 
+    use crate::utils;
+    use super::{Note, SaveFile};
 
-    pub fn savefile<F>(note: &mut Note, get_filename: F)
+
+
+    #[derive(Debug)]
+    pub enum BackUpType {
+        OnOpen,
+        AfterWrite,
+        OnExit,
+        BeforeWrite,
+    }
+    impl Display for BackUpType {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            match self {
+                BackUpType::OnOpen => write!(f, "open"),
+                BackUpType::BeforeWrite => write!(f, "bw"),
+                BackUpType::AfterWrite => write!(f, "aw"),
+                BackUpType::OnExit => write!(f, "exit"),
+            }
+        }
+    }
+
+    pub fn savefile<F>(note: &mut Note, get_filename: F, checked:bool)
         where F: FnOnce() -> Option<PathBuf> {
         if !note.filepath.is_some() {
             if let Some(newname) = get_filename(){
@@ -278,8 +285,12 @@ pub mod note_events {
         if !note.filepath.is_some(){
             note.log_string("[save_cancelled]");
         } else {
-            let status = note.savefile();
-            note.log_string(&status);
+            let status = if checked {
+                note.savefile_checked()
+            } else {
+                note.savefile()
+            };
+            note.log_string(status.as_str());
         }
     }
 
@@ -296,7 +307,7 @@ pub mod note_events {
             let filename = note.filepath.as_ref().expect("..");
             let filename = filename.to_str().unwrap();
             let status = &mut "".to_owned();
-            BackUpType::BeforeWrite.backing(
+            backup(BackUpType::BeforeWrite,
                 filename,
                 status,
                 note,
@@ -304,12 +315,47 @@ pub mod note_events {
             );
             note.log_string(&status);
             let status = note.savefile();
-            note.log_string(&status)
+            note.log_string(status.as_str());
 
         }
     }
     pub fn clear_log(note:&mut  Note){
         note.log_string("");
     }
+
+    pub fn loadfile(note:&mut Note) -> String {
+        let path = note.filepath.as_ref().unwrap().to_str().unwrap();
+        match utils::from_file(path) {
+            Ok(mut data) => {
+                note.coding.decode(&mut data);
+                note.buffer.push_str(&String::from_utf8(data).unwrap());
+                note.buffer0.clone_from(note.buffer);
+                let now = &utils::timetag();
+                let mut m = format!("{now} opened:[{path}]");
+                backup(BackUpType::OnOpen, path, &mut m, note, now); 
+                m
+            }
+            Err(e) => e.to_string(),
+        }
+    }
+
+    pub fn backup(backup:BackUpType, filename: &str, m: &mut String, note:&Note, now: &String) {
+        fn logbackup(tag: BackUpType, filename: &str, now: &String) -> String {
+            if let Ok(backed) = utils::backfile(filename, &format!("{}.{}", tag, now)) {
+                format!(":backed[{tag}]:{backed}")
+            } else {
+                format!(":failed_savefile[{tag}]")
+            }
+        }
+        match backup {
+            BackUpType::OnExit|BackUpType::OnOpen|BackUpType::BeforeWrite => {
+                if note.cfg.trace { m.push_str(&logbackup(backup, filename, now)) } 
+            }
+            BackUpType::AfterWrite => {
+                if note.cfg.history { m.push_str(&logbackup(backup, filename, now))} 
+            }
+        };
+    }
+
 
 }
