@@ -8,8 +8,8 @@ use std::collections::VecDeque;
 use std::fmt::{self, Display, Formatter};
 use std::io::{self, BufReader, Read};
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+
+
 
 use std::fs;
 use std::path::PathBuf;
@@ -167,15 +167,11 @@ impl<'a> Note<'a> {
             let mut data = self.buffer.as_bytes().to_vec();
             let now = &utils::timetag();
             self.coding.encode(&mut data);
-            let mut m = if let Err(e) = utils::to_file_atomic(filename2, &data) {
-                format!("{now} failed @ save[{filename2}] with:{e}")
+            if let Err(e) = utils::to_file_atomic(filename2, &data) {
+                SaveFile::Err(format!("{now} save[{filename2}]=fail with:{e}"))
             } else {
-                let mut hasher = DefaultHasher::new();
-                self.buffer.hash(&mut hasher);
-                let hash_value = hasher.finish();
-                format!("{now} {hash_value:016x} save[{filename2}]")
-            };
-            SaveFile::Ok(m)
+                SaveFile::Ok(format!("{now} save[{filename2}]"))
+            }
         } else if self.filepath.is_some() {
             SaveFile::Err(format!("malformed_filename:{:?}", self.filepath))
         } else {
@@ -248,8 +244,11 @@ impl<'a> Drop for Note<'a> {
 
 pub mod note_events {
 
+    use std::collections::hash_map::DefaultHasher;
     use std::fmt::{self, Display, Formatter};
+    use std::hash::{Hash, Hasher};
     use std::path::PathBuf;
+
 
     use crate::utils;
     use super::{Note, SaveFile};
@@ -284,13 +283,27 @@ pub mod note_events {
         if !note.filepath.is_some(){
             note.log_string("[save_cancelled]");
         } else {
-            let status = if checked {
+            let status_ok = if checked {
                 note.savefile_checked()
             } else {
                 note.savefile()
             };
-            note.log_string(status.as_str());
+            log_status(note, &status_ok);
         }
+    }
+
+    fn log_status(note:&mut Note, status:&SaveFile){
+        match status { 
+            SaveFile::Ok(log) => { 
+                let mut hasher = DefaultHasher::new();
+                note.buffer.hash(&mut hasher);
+                let hash_value = hasher.finish();
+                note.log_string(&format!("{log} {hash_value:016x}"))
+            }, 
+            err => {
+                note.log_string(err.as_str())
+            }
+        };
     }
 
     pub fn save_optional_backup_file<F>(note:&mut  Note, get_filename: F)
@@ -309,8 +322,7 @@ pub mod note_events {
                 &utils::timetag(),
             );
             note.log_string(&status);
-            let status = note.savefile();
-            note.log_string(status.as_str());
+            log_status(note, &note.savefile()); 
         } else {
             note.log_string(&format!("[malformed_filename:{:?}]", note.filepath)); 
         }
