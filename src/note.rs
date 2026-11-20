@@ -163,26 +163,25 @@ impl<'a> Note<'a> {
 
 
     pub fn savefile(&self) -> SaveFile {
-        let mut data = self.buffer.as_bytes().to_vec();
-        if let Some(filepath) = self.filepath.as_ref() {
-            if let Some(filename2) = filepath.to_str() {
-                let now = &utils::timetag();
-                self.coding.encode(&mut data);
-                let mut m = if let Err(e) = utils::to_file_atomic(filename2, &data) {
-                    format!("{now} failed @ save[{filename2}] with:{e}")
-                } else {
-                    let mut hasher = DefaultHasher::new();
-                    self.buffer.hash(&mut hasher);
-                    let hash_value = hasher.finish();
-                    format!("{now} {hash_value:016x} save[{filename2}]")
-                };
-                SaveFile::Ok(m)
+        if let Some(filename2) = self.filepath.as_ref().and_then(|path| path.to_str()){
+            let mut data = self.buffer.as_bytes().to_vec();
+            let now = &utils::timetag();
+            self.coding.encode(&mut data);
+            let mut m = if let Err(e) = utils::to_file_atomic(filename2, &data) {
+                format!("{now} failed @ save[{filename2}] with:{e}")
             } else {
-                SaveFile::Err(format!("malformed_filename:{:?}", filepath))
-            }
+                let mut hasher = DefaultHasher::new();
+                self.buffer.hash(&mut hasher);
+                let hash_value = hasher.finish();
+                format!("{now} {hash_value:016x} save[{filename2}]")
+            };
+            SaveFile::Ok(m)
+        } else if self.filepath.is_some() {
+            SaveFile::Err(format!("malformed_filename:{:?}", self.filepath))
         } else {
             SaveFile::Err("no_vald_filepath".to_owned())
         }
+        
     }
 
 
@@ -297,15 +296,11 @@ pub mod note_events {
     pub fn save_optional_backup_file<F>(note:&mut  Note, get_filename: F)
         where F: FnOnce() -> Option<PathBuf> {
         if !note.filepath.is_some(){
-            if let Some(newname) = get_filename(){
-                note.filepath = Some(newname);
-            }
+            note.filepath = get_filename()
         }
-        if !note.filepath.is_some(){
+        if !note.filepath.is_some() {
             note.log_string("[save_cancelled]");
-        } else {
-            let filename = note.filepath.as_ref().expect("..");
-            let filename = filename.to_str().unwrap();
+        } else if let Some(filename) = note.filepath.as_ref().and_then(|path| path.to_str()){
             let status = &mut "".to_owned();
             backup(BackUpType::BeforeWrite,
                 filename,
@@ -316,7 +311,8 @@ pub mod note_events {
             note.log_string(&status);
             let status = note.savefile();
             note.log_string(status.as_str());
-
+        } else {
+            note.log_string(&format!("[malformed_filename:{:?}]", note.filepath)); 
         }
     }
     pub fn clear_log(note:&mut  Note){
