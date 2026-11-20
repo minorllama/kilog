@@ -34,6 +34,13 @@ impl Display for BackUpType {
     }
 }
 
+#[derive(Debug)]
+pub enum SaveOk {
+    IgnoredEmpty,
+    IgnoredUnchanged,
+    Saved(String),
+}
+
 impl BackUpType {
     pub fn backing(self, filename: &str, m: &mut String, note:&Note, now: &String) {
         fn logbackup(tag: BackUpType, filename: &str, now: &String) -> String {
@@ -66,7 +73,7 @@ pub struct NoteCfg {
 }
 
 pub struct Note<'a> {
-    txt: String,
+    buffer0: String,
     pub log: String,
     logbuffer: VecDeque<String>,
     pub filepath: Option<PathBuf>,
@@ -77,8 +84,12 @@ pub struct Note<'a> {
 }
 
 impl<'a> Note<'a> {
-    pub fn state(&self) -> &String {
-        &self.txt
+    pub fn last_state(&self) -> &String {
+        &self.buffer0
+    }
+
+    pub fn is_buffer_dirty(&self) -> bool {
+        self.buffer0 != *self.buffer
     }
 
     pub fn new(
@@ -89,7 +100,7 @@ impl<'a> Note<'a> {
     ) -> Self {
         let mut note = Note {
             signal: sig,
-            txt: "".to_owned(),
+            buffer0: "".to_owned(),
             logbuffer: VecDeque::new(),
             log: "".to_owned(),
             filepath: cfg.get("-gbuf").map(|x| x.into()),
@@ -141,6 +152,16 @@ impl<'a> Note<'a> {
     }
 
 
+    pub fn savefile_checked(&mut self) -> SaveOk {
+        eprintln!("{:?}", self.is_buffer_dirty());
+        if !self.is_buffer_dirty() {
+            SaveOk::IgnoredUnchanged 
+        } else {
+            self.buffer0.clone_from(self.buffer);
+            SaveOk::Saved(self.savefile())
+        }
+    }
+
 
     pub fn savefile(&self) -> String {
         let mut data = self.buffer.as_bytes().to_vec();
@@ -171,6 +192,7 @@ impl<'a> Note<'a> {
             Ok(mut data) => {
                 self.coding.decode(&mut data);
                 self.buffer.push_str(&String::from_utf8(data).unwrap());
+                self.buffer0.clone_from(self.buffer);
                 let now = &utils::timetag();
                 let mut m = format!("{now} opened:[{path}]");
                 BackUpType::OnOpen.backing(path, &mut m, self, now); 

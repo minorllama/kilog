@@ -37,13 +37,13 @@ pub fn extended_ui(note:&mut Note, ui: &mut egui::Ui, ctx: &egui::Context) {
 
 use std::sync::atomic::{AtomicBool, Ordering};
 impl<'a> eframe::App for Note<'a> {
-    fn save(&mut self, _storage: &mut dyn eframe::Storage) {
+    /*fn save(&mut self, _storage: &mut dyn eframe::Storage) {
         eprintln!("[cannot_get_this_to_work] {}", self.log);
     }
 
     fn auto_save_interval(&self) -> std::time::Duration {
         std::time::Duration::from_secs(1)
-    }
+    }*/
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let font = FontId::new(self.cfg.fontsize, FontFamily::Monospace);

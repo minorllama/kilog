@@ -129,7 +129,7 @@ pub fn get_tempfile_with_prefix(prefix: &Path) -> io::Result<(File, PathBuf)> {
 
 
 
-fn move_or_overwrite_file(source:&Path, destination:&Path) -> io::Result<()> {
+fn move_to_overwrite_file(source:&Path, destination:&Path) -> io::Result<()> {
     // may need to custmize this
     match fs::metadata(destination) {
         Ok(metadata) if metadata.permissions().readonly() => {
@@ -153,7 +153,7 @@ fn write_then_move(
     file.sync_all()?;
     drop(file);
     let n = data.len();
-    move_or_overwrite_file(filepath, destination).and_then(|_x|{Ok(n)})
+    move_to_overwrite_file(filepath, destination).and_then(|_x|{Ok(n)})
 }
 
 fn write_then_move_checked(
@@ -170,7 +170,7 @@ fn write_then_move_checked(
         return Err(io::Error::new(io::ErrorKind::Other, "[copied_data_could_not_be_verified]"));
     }
     let n = data.len();
-    move_or_overwrite_file(filepath, destination).and_then(|x|{Ok(n)})
+    move_to_overwrite_file(filepath, destination).and_then(|x|{Ok(n)})
 }
 
 pub fn to_file_atomic_checked(filename: impl AsRef<Path>, data: &[u8]) -> io::Result<usize> {
