@@ -3,7 +3,7 @@ use crate::encoder::Encoder;
 use crate::utils;
 
 use std::cell::Cell;
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashMap};
 
 use std::fmt::{self, Display, Formatter};
 use std::io::{self, BufReader, Read};
@@ -24,6 +24,11 @@ pub enum SaveFile {
     Err(String),
 }
 
+
+#[derive(Hash,Eq, PartialEq)]
+pub enum NoteState {
+    HighLight
+}
 
 impl SaveFile {
     fn as_str<'a >(&'a self) -> &'a str {
@@ -74,6 +79,7 @@ pub struct NoteCfg {
 pub struct Note<'a> {
     buffer0: String,
     pub log: String,
+    pub state: HashMap<NoteState, String>,
     logbuffer: VecDeque<String>,
     pub filepath: Option<PathBuf>,
     coding: Box<dyn Encoder>,
@@ -102,6 +108,7 @@ impl<'a> Note<'a> {
             buffer0: "".to_owned(),
             logbuffer: VecDeque::new(),
             log: "".to_owned(),
+            state: HashMap::new(),
             filepath: cfg.get("-gbuf").map(|x| x.into()),
             coding: encoder,
             buffer: buffer,

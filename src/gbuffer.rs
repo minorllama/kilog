@@ -1,15 +1,22 @@
 use crate::cfg::Cfg;
 use crate::encoder::Encoder;
 
-use eframe::egui::{self, Modifiers};
-use egui::{Color32, FontFamily, FontId}; // Style
-use std::cell::Cell;
 
+use eframe::egui::{self, Modifiers};
+use eframe::egui::{text::LayoutJob, Color32, TextFormat, Galley};
+use egui::{FontFamily, FontId}; // Style
+
+use std::cell::Cell;
 use std::path::PathBuf;
+use std::sync::Arc;
+
+
+use std::collections::HashMap;
 
 use rfd;
 
-use crate::note::{Note, note_events};
+use crate::note::{Note, note_events, NoteState};
+
 
 
 const MINIMAL_UI: bool = true;
@@ -35,11 +42,60 @@ pub fn extended_ui(note:&mut Note, ui: &mut egui::Ui, ctx: &egui::Context) {
     }
 }
 
+
+
+fn make_overlay_layout(font: FontId, text_color: Color32, state:&HashMap<NoteState, String>) 
+-> impl FnMut(&egui::Ui, &str, f32) -> Arc<Galley> + use<> // need use<> so the lifetime for state does not get attached to return type
+{
+    let highlight = state.get(&NoteState::HighLight).map(|x|x.clone());
+
+    move |ui, text, wrap_width| {
+        let normal = TextFormat {
+            font_id: font.clone(),
+            color: text_color,
+            ..Default::default()
+        };
+        let mut job = LayoutJob::default();
+        job.wrap.max_width = wrap_width;
+        if let Some(word) = highlight.as_deref() && let Some((before, after)) = text.split_once(word) {
+            let highlighted = TextFormat {
+                background: Color32::YELLOW,
+                ..normal.clone()
+            };
+            job.append(before, 0.0, normal.clone());
+            job.append(word, 0.0, highlighted);
+            job.append(after, 0.0, normal);
+        } else {
+            job.append(text, 0.0, normal);
+        }
+        ui.fonts(|fonts| fonts.layout_job(job))
+    }
+}
+
+impl<'a>  Note<'a> {
+    fn make_textbox<'b, 'c>(&'c mut self, box_type:u32, font:FontId, text_color:Color32, background_color:Color32) ->  egui::TextEdit<'b> 
+            where 'c:'b {
+        let buffer:&mut String = if box_type == 0 { self.buffer } else { &mut self.log };
+        let rows = if box_type == 0 { self.cfg.n_rows } else { 1 };  
+        egui::TextEdit::multiline(buffer)
+            .font(font.clone()) //TextStyle::Monospace)
+            .background_color(background_color)
+            .lock_focus(true)
+            .text_color(text_color)
+            .desired_width(f32::INFINITY)
+            .desired_rows(rows)
+            .interactive(box_type == 0)
+            .lock_focus(box_type == 0)
+    }
+}
+
 use std::sync::atomic::{AtomicBool, Ordering};
 impl<'a> eframe::App for Note<'a> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let font = FontId::new(self.cfg.fontsize, FontFamily::Monospace);
-        let color = Color32::from_rgb(28, 28, 28);
+        let background_color = Color32::from_rgb(28, 28, 28);
+        let text_color = egui::Color32::GRAY;
+
         egui::CentralPanel::default()
             .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(egui::Margin::same(6 as f32)))
             .show(ctx, |ui| {
@@ -50,31 +106,21 @@ impl<'a> eframe::App for Note<'a> {
                 .stick_to_bottom(true)
                 .enable_scrolling(true)
                 .show(ui, |ui| {
-                    ui.add(
-                        egui::TextEdit::multiline(self.buffer)
-                            .font(font.clone()) //TextStyle::Monospace)
-                            .background_color(color.clone())
-                            .lock_focus(true)
-                            .text_color(egui::Color32::GRAY)
-                            .desired_width(f32::INFINITY)
-                            .desired_rows(self.cfg.n_rows),
-                    );
+                    const TEXTBOX:u32 = 0;
+                    const LOGBOX:u32 = 1;
+                    
+                    let save_button = egui::Button::new("save").min_size((&[40.0, 1.0]).into());
+                    let find_button = egui::Button::new("find").min_size((&[40.0, 1.0]).into());
+
+                    let mut layouter = make_overlay_layout(font.clone(), text_color.clone(), &self.state);
+                    let textbox = self.make_textbox(TEXTBOX, font.clone(), text_color.clone(), background_color.clone());
+                    
+                    //ui.add(textbox.layouter(&mut layouter)); 
+                    ui.add(textbox); 
                     ui.add_space(5.0);
                     ui.separator();
-                    ui.add(
-                        egui::TextEdit::multiline(&mut self.log)
-                            .font(font) //TextStyle::Monospace)
-                            .background_color(color.clone())
-                            .lock_focus(false)
-                            .text_color(egui::Color32::GRAY)
-                            .desired_width(f32::INFINITY)
-                            .desired_rows(1)
-                            .interactive(false), 
-                    );
-                    let save_button = egui::Button::new("save").min_size((&[40.0, 1.0]).into());
-
-
-                    
+                    ui.add(self.make_textbox(LOGBOX, font.clone(), text_color.clone(), background_color.clone()));
+                   
                     extended_ui(self, ui, ctx);
 
                     if ui.add(save_button).clicked() {
@@ -84,6 +130,14 @@ impl<'a> eframe::App for Note<'a> {
                         let status = String::from(self.savefile());
                         self.log_string(&status);
                     }
+                    /*if ui.add(find_button).clicked() {
+                        let state = NoteState::HighLight;
+                        if self.state.contains_key(&state) {
+                            self.state.remove(&state);
+                        } else {
+                            self.state.insert(state, "TODO".to_owned());
+                        }
+                    }*/
                     ui.label(format!(""));
                     let _input = &ctx.input_mut(|e| {
                         let keypress_crtl = Modifiers { ctrl: true,
@@ -145,3 +199,10 @@ pub fn main(c: &Cfg, encoder: Box<dyn Encoder>) {
     let note = Note::new(encoder, &c, &mut buffer, &signal);
     ui(target, note);
 }
+
+
+
+
+
+
+
