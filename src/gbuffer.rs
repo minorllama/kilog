@@ -29,6 +29,10 @@ pub fn save_file_dialog(_ctx: &egui::Context) -> Option<PathBuf> {
     rfd::FileDialog::new().save_file()
 }
 
+
+
+
+
 pub fn extended_ui(note:&mut Note, ui: &mut egui::Ui, ctx: &egui::Context) {
     if !MINIMAL_UI {
         let open_button = egui::Button::new("open").min_size((&[40.0, 1.0]).into());
@@ -75,7 +79,12 @@ fn make_overlay_layout(font: FontId, text_color: Color32, state:&HashMap<NoteSta
 impl<'a>  Note<'a> {
     fn make_textbox<'b, 'c>(&'c mut self, box_type:u32, font:FontId, text_color:Color32, background_color:Color32) ->  egui::TextEdit<'b> 
             where 'c:'b {
-        let buffer:&mut String = if box_type == 0 { self.buffer } else { &mut self.log };
+
+        let buffer:&mut String = match box_type{ 
+            0 => self.buffer,
+            1 => &mut self.log,
+            _ => &mut self.console,
+        };
         let rows = if box_type == 0 { self.cfg.n_rows } else { 1 };  
         egui::TextEdit::multiline(buffer)
             .font(font.clone()) //TextStyle::Monospace)
@@ -84,7 +93,7 @@ impl<'a>  Note<'a> {
             .text_color(text_color)
             .desired_width(f32::INFINITY)
             .desired_rows(rows)
-            .interactive(box_type == 0)
+            .interactive(box_type == 0 || box_type == 2)
             .lock_focus(box_type == 0)
     }
 }
@@ -94,6 +103,7 @@ impl<'a> eframe::App for Note<'a> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let font = FontId::new(self.cfg.fontsize, FontFamily::Monospace);
         let background_color = Color32::from_rgb(28, 28, 28);
+        let background_color2 = Color32::from_rgb(20, 20, 20);
         let text_color = egui::Color32::GRAY;
 
         egui::CentralPanel::default()
@@ -108,9 +118,9 @@ impl<'a> eframe::App for Note<'a> {
                 .show(ui, |ui| {
                     const TEXTBOX:u32 = 0;
                     const LOGBOX:u32 = 1;
+                    const CONSOLEBOX:u32 = 2;
                     
                     let save_button = egui::Button::new("save").min_size((&[40.0, 1.0]).into());
-                    let find_button = egui::Button::new("find").min_size((&[40.0, 1.0]).into());
 
                     let mut layouter = make_overlay_layout(font.clone(), text_color.clone(), &self.state);
                     let textbox = self.make_textbox(TEXTBOX, font.clone(), text_color.clone(), background_color.clone());
@@ -120,24 +130,15 @@ impl<'a> eframe::App for Note<'a> {
                     ui.add_space(5.0);
                     ui.separator();
                     ui.add(self.make_textbox(LOGBOX, font.clone(), text_color.clone(), background_color.clone()));
-                   
+                    ui.separator();
+                    ui.separator();
+                    ui.add(self.make_textbox(CONSOLEBOX, font.clone(), text_color.clone(), background_color2.clone()));
+
                     extended_ui(self, ui, ctx);
 
                     if ui.add(save_button).clicked() {
-                        if !self.filepath.is_some() {
-                            self.filepath = save_file_dialog(ctx);
-                        }
-                        let status = String::from(self.savefile());
-                        self.log_string(&status);
+                        note_events::save_optional_backup_file(self, ||save_file_dialog(ctx));
                     }
-                    /*if ui.add(find_button).clicked() {
-                        let state = NoteState::HighLight;
-                        if self.state.contains_key(&state) {
-                            self.state.remove(&state);
-                        } else {
-                            self.state.insert(state, "TODO".to_owned());
-                        }
-                    }*/
                     ui.label(format!(""));
                     let _input = &ctx.input_mut(|e| {
                         let keypress_crtl = Modifiers { ctrl: true,
@@ -161,6 +162,10 @@ impl<'a> eframe::App for Note<'a> {
                         } 
                         if e.consume_key(keypress_crtl, egui::Key::E){
                             note_events::clear_log(self);
+                            note_events::clear_console(self);
+                        }
+                        if e.consume_key(keypress_crtl, egui::Key::F){
+                            note_events::find_highlight(self); 
                         }
 
                         

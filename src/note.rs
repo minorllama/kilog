@@ -25,7 +25,7 @@ pub enum SaveFile {
 }
 
 
-#[derive(Hash,Eq, PartialEq)]
+#[derive(Hash,Eq, PartialEq, Debug)]
 pub enum NoteState {
     HighLight
 }
@@ -80,6 +80,7 @@ pub struct Note<'a> {
     buffer0: String,
     pub log: String,
     pub state: HashMap<NoteState, String>,
+    pub console: String,
     logbuffer: VecDeque<String>,
     pub filepath: Option<PathBuf>,
     coding: Box<dyn Encoder>,
@@ -109,6 +110,7 @@ impl<'a> Note<'a> {
             logbuffer: VecDeque::new(),
             log: "".to_owned(),
             state: HashMap::new(),
+            console: "".to_owned(),
             filepath: cfg.get("-gbuf").map(|x| x.into()),
             coding: encoder,
             buffer: buffer,
@@ -338,6 +340,10 @@ pub mod note_events {
         note.log_string("");
     }
 
+    pub fn clear_console(note:&mut  Note){
+        note.console.clear();
+    }
+
     pub fn loadfile(note:&mut Note) -> String {
         let path = note.filepath.as_ref().unwrap().to_str().unwrap();
         match utils::from_file(path) {
@@ -372,5 +378,14 @@ pub mod note_events {
         };
     }
 
-
+    pub fn find_highlight(note:&mut Note){
+        let state = super::NoteState::HighLight;
+        if note.state.contains_key(&state) {
+            note.state.remove(&state);
+        } else {
+            note.state.insert(state, note.console.clone());
+        }
+        note.log.clone_from(&format!("{:?}", note.state));
+        note.console.clear();
+    }
 }
