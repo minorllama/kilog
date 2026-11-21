@@ -4,11 +4,11 @@ use kilog::utils;
 
 use std::{env, fs};
 
-#[cfg(not(feature = "minimal"))]
-use kilog::gbuffer;
+#[cfg(feature = "rich")]
+use kilog::rich::gbuffer;
 
-#[cfg(feature = "minimal")]
-use kilog::minimal_gbuffer as gbuffer;
+#[cfg(not(feature = "rich"))]
+use kilog::minimal::gbuffer as gbuffer;
 
 #[cfg(feature = "encoder_ext")]
 use kilog::encoder_ext::StackedEncoder2;

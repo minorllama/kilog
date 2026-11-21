@@ -15,8 +15,8 @@ use std::collections::HashMap;
 
 use rfd;
 
-use crate::minimal_note as note;
-use crate::minimal_note::{Note, note_events, NoteState};
+use crate::minimal::note as note;
+use crate::minimal::note::{Note, note_events, NoteState};
 
 const MINIMAL_UI: bool = true;
 

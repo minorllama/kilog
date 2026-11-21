@@ -24,7 +24,7 @@ lopdf = { version = "0.47.0", optional = true }
 
 [features]
 default = []
-minimal = []
+rich = []
 pdfview = ["dep:hayro", "dep:lopdf"]
 
 

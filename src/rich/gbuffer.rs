@@ -15,7 +15,8 @@ use std::collections::HashMap;
 
 use rfd;
 
-use crate::note::{Note, note_events, NoteState};
+use crate::rich::note as note;
+use crate::rich::note::{Note, note_events, NoteState};
 
 
 

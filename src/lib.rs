@@ -1,11 +1,10 @@
 pub mod cfg;
 pub mod encoder;
-pub mod note;
-pub mod gbuffer;
 pub mod utils;
+pub mod minimal;
 
-pub mod minimal_gbuffer;
-pub mod minimal_note;
+#[cfg(feature = "rich")]
+pub mod rich;
 
 #[cfg(feature = "pdfview")]
 pub mod pdfview;
